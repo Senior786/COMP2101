@@ -1,29 +1,21 @@
 #!/bin/bash
 
-echo "FQDN: $(hostname -f)"
-echo "Host Information: "
+echo
+fqdn=$(hostname -f) #create variable and saves output for FQDN
+osnw=`hostnamectl | grep Operating | cut -f2 -d":"` #create variable and saves output for os name and its version
+hst=$(hostname -I) #create variable and saves output for knowing IP address
+rd=`df -h / | tail -1 | awk '{print $4}'` #create variable and saves output for root filesystem 
 
-#echo "Static hostname: "
-hostnamectl | grep Static
-#echo "Icon name: "
-hostnamectl | grep Icon
-#echo "Chassis: "
-hostnamectl | grep Chassis
-#echo "Machine ID: "
-hostnamectl | grep Machine
-#echo "Boot ID: "
-hostnamectl | grep Boot
-#echo "Operating System: "
-hostnamectl | grep Operating
-#echo "Kernel: "
-hostnamectl | grep Kernel
-#echo "Architecture: "
-hostnamectl | grep Architecture
 
-echo "IP Addresses: "
-hostname -I
-#hostname -i
-#ifconfig ens33 |awk '/inet addr:/ {print $2}'|tr -d 'addr:'
+# this will prints the created output in formated method.
+cat <<EOF
+Report for myvm
+===============
+FQDN: $fqdn
+Operating System name and version: $osnw
+IP Addresses: $hst
+Root Filesystem Free space: $rd
+===============
+EOF
+echo
 
-echo "Root Filesystem Status: "
-df -h /

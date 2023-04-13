@@ -27,6 +27,87 @@ function OperatingSystem
 function Processor 
 {
     $processor = Get-CimInstance Win32_Processor
+    $co…
+[12:02 a.m., 2023-04-13] Shabista: function welcome
+{
+	write-output "Welcome to planet $env:computername Overlord $env:username" 
+	$now = get-date -format 'HH:MM tt on dddd' 
+	write-output "It is $now." 
+}
+
+function Get-CPUInfo {
+    $cpus = Get-CimInstance CIM_Processor
+
+    foreach ($cpu in $cpus) {
+        [PSCustomObject]@{
+            "Manufacturer" = $cpu.Manufacturer
+            "Model" = $cpu.Name
+            "Cores" = $cpu.NumberOfCores
+            "Current Speed (GHz)" = "{0:F2}" -f ($cpu.CurrentClockSpeed / 1e9)
+            "Max Speed (GHz)" = "{0:F2}" -f ($cpu.MaxClockSpeed / 1e9)
+        }
+    }
+}
+
+function Get-MyDisks {
+    $disks = Get-CimInstance Win32_DiskDrive | Select-Object Manufacturer,Model,SerialNumber,FirmwareRevision,@{Name="Size (GB)";Expression={$_.Size/1GB}}
+    $d…
+[12:03 a.m., 2023-04-13] Shabista: function IPConfig
+{
+    $adapters = Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true}
+
+    $table = @()
+
+    foreach ($adapter in $adapters) {
+        $ipAddresses = $adapter.IPAddress -join ', '
+        $subnetMasks = $adapter.IPSubnet -join ', '
+        $dnsDomain = $adapter.DNSDomain
+        $dnsServers = $adapter.DNSServerSearchOrder -join ', '
+        
+        $table += [pscustomobject]@{
+            "Adapter Description" = $adapter.Description
+            "Index" = $adapter.Index
+            "IP Address(es)" = $ipAddresses
+            "Subnet Mask(s)" = $subnetMasks
+            "DNS Domain Name" = $dnsDomain
+            "DNS Server(s)" = $dnsServers
+        }
+    }
+
+    $table | Format-Table -AutoSize
+}
+
+IPConfig
+
+#System hardware
+function SystemHardware 
+{
+    $hardware = Get-CimInstance Win32_ComputerSystem
+    [pscustomobject]@{
+        "Manufacturer" = $hardware.Manufacturer
+        "Model" = $hardware.Model
+        "Serial Number" = $hardware.Serial
+        "System Type" = $hardware.SystemType
+        "Total Physical Memory" = "{0:N2} GB" -f ($hardware.TotalPhysicalMemory / 1GB)
+    }
+}
+
+#Operating System
+function OperatingSystem 
+{
+    $os = Get-CimInstance Win32_OperatingSystem
+    [pscustomobject]@{
+        "Operating System" = $os.Caption
+        "Version" = $os.Version
+        "Build Number" = $os.BuildNumber
+        "Service Pack" = $os.ServicePackMajorVersion
+    }
+}
+
+#Processor
+function Processor 
+{
+    $processor = Get-CimInstance Win32_Processor
     $cores = $processor.NumberOfCores
     $threads = $processor.NumberOfLogicalProcessors - $cores
 
@@ -41,17 +122,16 @@ function Processor
     }
 }
 
+#Memory
 function Memory 
 {
     $memory = Get-CimInstance Win32_PhysicalMemory
-    $capacity_sum = 0
+    $totalMemory = ($memory.Capacity | Measure-Object -Sum).Sum
     $table = foreach ($dim in $memory) {
-        $capacity_gb = $dim.Capacity / 1GB
-        $capacity_sum += $capacity_gb
         [pscustomobject]@{
             "Vendor" = $dim.Manufacturer
             "Description" = $dim.PartNumber
-            "Capacity" = "{0:N2} GB" -f $capacity_gb
+            "Capacity" = "{0:N2} GB" -f ($dim.Capacity / 1GB)
             "Bank" = $dim.BankLabel
             "Slot" = $dim.DeviceLocator
         }
@@ -59,33 +139,9 @@ function Memory
 
     [pscustomobject]@{
         "RAM Installed" = $table
-        "Total RAM" = "{0:N2} GB" -f $capacity_sum
+        "Total RAM" = "{0:N2} GB" -f ($totalMemory / 1GB)
     }
 }
-
-#Memory
-function Memory 
-{
-    $memory = Get-CimInstance Win32_PhysicalMemory
-    $capacity_sum = 0
-    $table = foreach ($dim in $memory) {
-        $capacity_gb = $dim.Capacity / 1GB
-        $capacity_sum += $capacity_gb
-        [pscustomobject]@{
-            "Vendor" = $dim.Manufacturer
-            "Description" = $dim.PartNumber
-            "Capacity" = "{0:N2} GB" -f $capacity_gb
-            "Bank" = $dim.BankLabel
-            "Slot" = $dim.DeviceLocator
-        }
-    }
-
-    $output = [pscustomobject]@{
-        "RAM Installed" = $table
-        "Total RAM" = "{0:N2} GB" -f $capacity_sum
-    }
-
-    $outputdata | Format-Table -AutoS}
 
 #Disk
 function Disk 
@@ -120,25 +176,26 @@ function Network
 
 Write-Host "---------------------- System Information ----------------------`n"
 
-Write-Output "System Hardware"
-SystemHardware | Format-List
+Write-Host "`nSystem Hardware:"
+SystemHardware
 
-Write-Output "Operating System"
-OperatingSystem | Format-List
+Write-Host "`nOperating System:"
+OperatingSystem
 
+Write-Host "`nProcessor:"
+Processor
 
-Write-Output "Processor"
-Processor | Format-List
-
-
-Write-Output "Memory"
+Write-Host "`nMemory:"
 Memory
 
-Write-Output "Disk"
-Disk | Format-Table -AutoSize
+Write-Host "`nDisk:"
+Disk
 
-
-Write-Output "Network"
+Write-Host "`nNetwork:"
 Network
 
 Write-Host "`n---------------------- End of System Information ----------------------"
+
+
+
+Export-ModuleMember -Function IPConfig, SystemHardware, OperatingSystem, Processor, Memory, Disk, Network

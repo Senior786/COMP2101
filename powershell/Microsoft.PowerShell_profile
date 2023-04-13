@@ -1,0 +1,30 @@
+function welcome
+{
+	write-output "Welcome to planet $env:computername Overlord $env:username" 
+	$now = get-date -format 'HH:MM tt on dddd' 
+	write-output "It is $now." 
+}
+
+function Get-CPUInfo {
+    $cpus = Get-CimInstance CIM_Processor
+
+    foreach ($cpu in $cpus) {
+        [PSCustomObject]@{
+            "Manufacturer" = $cpu.Manufacturer
+            "Model" = $cpu.Name
+            "Cores" = $cpu.NumberOfCores
+            "Current Speed (GHz)" = "{0:F2}" -f ($cpu.CurrentClockSpeed / 1e9)
+            "Max Speed (GHz)" = "{0:F2}" -f ($cpu.MaxClockSpeed / 1e9)
+        }
+    }
+}
+
+function Get-MyDisks {
+    $disks = Get-CimInstance Win32_DiskDrive | Select-Object Manufacturer,Model,SerialNumber,FirmwareRevision,@{Name="Size (GB)";Expression={$_.Size/1GB}}
+    $disks | Format-Table -AutoSize
+}
+
+
+
+$env:path += ";$home/documents/github/comp2101/powershell"
+new-alias np notepad.exe
